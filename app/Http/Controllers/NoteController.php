@@ -12,7 +12,11 @@ class NoteController extends Controller
      */
     public function index()
     {
-        return Note::all()->where('id', '=', 2); 
+        $notes = Note::query()
+        ->where('user_id', auth()->user()->id)
+        ->orderBy('created_at', 'desc')->paginate(); 
+     
+        return view('note.index', ['notes' => $notes]);
     }
 
     /**
@@ -20,7 +24,7 @@ class NoteController extends Controller
      */
     public function create()
     {
-        return 'create'; 
+        return view('note.create');
     }
 
     /**
@@ -29,7 +33,13 @@ class NoteController extends Controller
     public function store(Request $request)
     {
         //
-        return 'store'; 
+        $data = $request->validate(
+            ['note' => ['required', 'string']
+        ]);
+        $data['user_id'] = auth()->user()->id; 
+        $note = Note::create($data); 
+
+        return to_route('note.show', $note)->with('message', 'Note was create');
     }
 
     /**
@@ -37,7 +47,8 @@ class NoteController extends Controller
      */
     public function show(Note $note)
     {
-        return $note; 
+        abort_if($note->user_id !== auth()->user()->id, 403);
+        return view('note.show', ['note' => $note] );
     }
 
     /**
@@ -45,7 +56,8 @@ class NoteController extends Controller
      */
     public function edit(Note $note)
     {
-        return 'edit';  
+        abort_if($note->user_id !== auth()->user()->id, 403);
+        return view('note.edit' , ['note' => $note]);
     }
 
     /**
@@ -53,7 +65,13 @@ class NoteController extends Controller
      */
     public function update(Request $request, Note $note)
     {
-        return 'update'; 
+        abort_if($note->user_id !== auth()->user()->id, 403);
+        $data = $request->validate(
+            ['note' => ['required', 'string']
+        ]);
+        $note->update($data);
+
+        return to_route('note.show', $note)->with('message', 'Note was updated');
     }
 
     /**
@@ -61,6 +79,9 @@ class NoteController extends Controller
      */
     public function destroy(Note $note)
     {
-        return 'destroy'; 
+       abort_if($note->user_id !== auth()->user()->id, 403);
+       $note->delete(); 
+
+       return to_route('note.index')->with('message', 'Note was deleted');
     }
 }
